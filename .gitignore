@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+comments.db
+predictions.csv
+venv/
+.env
