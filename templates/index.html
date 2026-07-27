@@ -1,252 +1,147 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>AI Comment Moderator</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
 <body>
-
-<div class="container mt-5 mb-5">
-
-   <button
-    type="button"
-    class="btn btn-secondary"
-    onclick="toggleDarkMode()">
-    🌙 Dark Mode
- </button>
-
-<h5>👋 Welcome, {{ username }}</h5>
-<a href="/logout">
-    <button type="button" class="btn btn-dark">
-        🚪 Logout
-    </button>
-</a>
+ 
+<div class="container">
+ 
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="m-0">👋 Welcome, {{ username }}</h5>
+        <div>
+            <button type="button" class="btn-outline" onclick="toggleDarkMode()">🌙 Dark Mode</button>
+            <a href="/logout"><button type="button" class="btn-outline">🚪 Logout</button></a>
+        </div>
+    </div>
+ 
     <h1>AI Comment Moderator</h1>
-
-    <form method="POST">
-        <input
-            type="text"
-            name="comment"
-            placeholder="Enter your comment"
-            required
-            autofocus>
-
-        <button type="submit" class="btn btn-primary">
-    Check Comment
-</button>
+    <p class="subtitle">Check a single comment, or upload a CSV for bulk predictions.</p>
+ 
+    <form method="POST" class="input-row">
+        <input type="text" name="comment" placeholder="Enter your comment" required autofocus>
+        <button type="submit">Check Comment</button>
     </form>
-<hr>
-
-<h3>📂 Bulk CSV Prediction</h3>
-
-<form action="/upload" method="POST" enctype="multipart/form-data">
-
-    <input
-        type="file"
-        name="csvfile"
-        accept=".csv"
-        required>
-
-    <button
-        type="submit"
-        class="btn btn-primary">
-        Upload CSV
-    </button>
-
-</form>
+ 
     {% if last_comment %}
         <p><b>Last Comment:</b> {{ last_comment }}</p>
     {% endif %}
-
+ 
     <div class="result-box">
-
         {% if result == "safe" %}
-
-            <h2 class="safe-result">✅ SAFE COMMENT</h2>
-            <p><b>Confidence:</b> {{ "%.2f"|format(confidence) }}%</p>
-            <p><b>Model Used:</b> {{ model_name }}</p>
-
+            <div class="safe-result">
+                <b>✅ SAFE COMMENT</b><br>
+                Confidence: {{ "%.2f"|format(confidence) }}%<br>
+                Model: {{ model_name }}
+            </div>
         {% elif result == "toxic" %}
-
-            <h2 class="toxic-result">❌ TOXIC COMMENT</h2>
-            <p><b>Confidence:</b> {{ "%.2f"|format(confidence) }}%</p>
-            <p><b>Model Used:</b> {{ model_name }}</p>
-
+            <div class="toxic-result">
+                <b>❌ TOXIC COMMENT</b><br>
+                Confidence: {{ "%.2f"|format(confidence) }}%<br>
+                Model: {{ model_name }}
+            </div>
         {% elif result == "spam" %}
-
-    <h2 class="spam-result">⚠️ SPAM COMMENT</h2>
-    <p><b>Confidence:</b> {{ "%.2f"|format(confidence) }}%</p>
-    <p><b>Model Used:</b> {{ model_name }}</p>
-
-{% endif %}
-
-{% if prediction_details %}
-
-<hr>
-
-<h3>Prediction Probability</h3>
-
-<p>🟢 Safe:
-{{ "%.2f"|format(prediction_details.get("safe", 0) * 100) }}%</p>
-
-<p>🔴 Toxic:
-{{ "%.2f"|format(prediction_details.get("toxic", 0) * 100) }}%</p>
-
-<p>🟠 Spam:
-{{ "%.2f"|format(prediction_details.get("spam", 0) * 100) }}%</p>
-
-{% endif %}
-
-</div>
-
-    <h3>Statistics</h3>
-
-    <a href="/clear">
-       <button type="button" class="btn btn-danger">
-    Clear History
-</button>
-    </a>
-
-    <a href="/export">
-       <button type="button" class="btn btn-success">
-    Export CSV
-</button>
-    </a>
-    <a href="/retrain">
-    <button type="button" class="btn btn-warning">
-    🔄 Retrain AI Model
-</button>
-</a>
-
-    <p>🟢 Safe: {{ safe_count }}</p>
-    <p>🔴 Toxic: {{ toxic_count }}</p>
-    <p>🟠 Spam: {{ spam_count }}</p>
-    <p>📝 Total Comments: {{ total_comments }}</p>
-
-    <h3>Comment Statistics Chart</h3>
-
-    <canvas
-        id="commentChart"
-        data-safe="{{ safe_count }}"
-        data-toxic="{{ toxic_count }}"
-        data-spam="{{ spam_count }}">
-    </canvas>
-    <h3>Project Summary</h3>
+            <div class="spam-result">
+                <b>⚠️ SPAM COMMENT</b><br>
+                Confidence: {{ "%.2f"|format(confidence) }}%<br>
+                Model: {{ model_name }}
+            </div>
+        {% endif %}
+ 
+        {% if prediction_details %}
+            <h3 class="section-title">Prediction Probability</h3>
+            <p>🟢 Safe: {{ "%.2f"|format(prediction_details.get("safe", 0) * 100) }}%</p>
+            <p>🔴 Toxic: {{ "%.2f"|format(prediction_details.get("toxic", 0) * 100) }}%</p>
+            <p>🟠 Spam: {{ "%.2f"|format(prediction_details.get("spam", 0) * 100) }}%</p>
+        {% endif %}
+    </div>
+ 
+    <h3 class="section-title">📂 Bulk CSV Prediction</h3>
+    <form action="/upload" method="POST" enctype="multipart/form-data" class="input-row">
+        <input type="file" name="csvfile" accept=".csv" required>
+        <button type="submit">Upload CSV</button>
+    </form>
+ 
+    <h3 class="section-title">Project Summary</h3>
     <div class="dashboard">
-
-    <div class="card">
-        <h2>{{ total_comments }}</h2>
-        <p>Total Comments</p>
+        <div class="card"><h2>{{ total_comments }}</h2><p>Total Comments</p></div>
+        <div class="card"><h2>{{ safe_count }}</h2><p>Safe</p></div>
+        <div class="card"><h2>{{ toxic_count }}</h2><p>Toxic</p></div>
+        <div class="card"><h2>{{ spam_count }}</h2><p>Spam</p></div>
     </div>
-
-    <div class="card">
-        <h2>{{ safe_count }}</h2>
-        <p>Safe</p>
+ 
+    <p>
+        <b>Safe:</b> {{ "%.1f"|format((safe_count / total_comments * 100) if total_comments else 0) }}% &nbsp;|&nbsp;
+        <b>Toxic:</b> {{ "%.1f"|format((toxic_count / total_comments * 100) if total_comments else 0) }}% &nbsp;|&nbsp;
+        <b>Spam:</b> {{ "%.1f"|format((spam_count / total_comments * 100) if total_comments else 0) }}%
+    </p>
+ 
+    <h3 class="section-title">Comment Statistics Chart</h3>
+    <canvas id="commentChart" data-safe="{{ safe_count }}" data-toxic="{{ toxic_count }}" data-spam="{{ spam_count }}"></canvas>
+ 
+    <h3 class="section-title">Filter &amp; Search Comments</h3>
+    <form method="GET" class="input-row">
+        <select name="filter">
+            <option value="all" {% if filter_type == "all" %}selected{% endif %}>All</option>
+            <option value="safe" {% if filter_type == "safe" %}selected{% endif %}>Safe</option>
+            <option value="toxic" {% if filter_type == "toxic" %}selected{% endif %}>Toxic</option>
+            <option value="spam" {% if filter_type == "spam" %}selected{% endif %}>Spam</option>
+        </select>
+        <input type="text" name="search" placeholder="Search comments..." value="{{ search_query }}">
+        <button type="submit">Apply</button>
+    </form>
+ 
+    <div class="input-row" style="justify-content: flex-start;">
+        <a href="/clear"><button type="button">Clear History</button></a>
+        <a href="/export"><button type="button">Export CSV</button></a>
+        <a href="/retrain"><button type="button">🔄 Retrain AI Model</button></a>
     </div>
-
-    <div class="card">
-        <h2>{{ toxic_count }}</h2>
-        <p>Toxic</p>
+ 
+    <h3 class="section-title">Comment History</h3>
+    <div id="historySection">
+        <ul>
+            {% for row in history %}
+            <li>
+                <span><b>{{ row.time }}</b> | {{ row.comment }} → {{ row.result }}</span>
+                <a href="/delete/{{ row.id }}"><button type="button">🗑 Delete</button></a>
+            </li>
+            {% else %}
+            <li>No comments yet.</li>
+            {% endfor %}
+        </ul>
     </div>
-
-    <div class="card">
-        <h2>{{ spam_count }}</h2>
-        <p>Spam</p>
-    </div>
-
+ 
 </div>
-
-<p><b>Total Comments:</b> {{ total_comments }}</p>
-<p><b>Model:</b> {{ model_name }}</p>
-
-<p>
-<b>Safe Percentage:</b>
-{{ "%.1f"|format((safe_count / total_comments * 100) if total_comments else 0) }}%
-</p>
-
-<p>
-<b>Toxic Percentage:</b>
-{{ "%.1f"|format((toxic_count / total_comments * 100) if total_comments else 0) }}%
-</p>
-
-<p>
-<b>Spam Percentage:</b>
-{{ "%.1f"|format((spam_count / total_comments * 100) if total_comments else 0) }}%
-</p>
-<h3>Filter Comments</h3>
-
-<form method="GET">
-    <select name="filter">
-        <option value="all">All</option>
-        <option value="safe">Safe</option>
-        <option value="toxic">Toxic</option>
-        <option value="spam">Spam</option>
-    </select>
-
-    <button type="submit">Apply Filter</button>
-</form>
-    <h3>Comment History</h3>
-
-<div id="historySection">
-
-    <ul>
-        {% for time, comment, result in history %}
-        <li>
-            <b>{{ time }}</b> |
-            <b>{{ comment }}</b> →
-            {{ result }}
-
-            <a href="/delete/{{ loop.index0 }}">
-                <button type="button">🗑 Delete</button>
-            </a>
-        </li>
-        {% endfor %}
-    </ul>
-
-</div>
-</div>
-
+ 
 <script>
 function toggleDarkMode() {
     document.body.classList.toggle("dark-mode");
 }
-
+ 
 const canvas = document.getElementById("commentChart");
-
-const safe = Number(canvas.dataset.safe);
-const toxic = Number(canvas.dataset.toxic);
-const spam = Number(canvas.dataset.spam);
-
-new Chart(canvas, {
-    type: "pie",
-    data: {
-        labels: ["Safe", "Toxic", "Spam"],
-        datasets: [{
-            data: [safe, toxic, spam],
-            backgroundColor: [
-                "#4CAF50",
-                "#F44336",
-                "#FFC107"
-            ]
-        }]
-    },
-    options: {
-        responsive: true
-    }
-});
-const historySection = document.getElementById("historySection");
-
-if (historySection) {
-    historySection.scrollIntoView({
-        behavior: "smooth",
-        block: "end"
+if (canvas) {
+    const safe = Number(canvas.dataset.safe);
+    const toxic = Number(canvas.dataset.toxic);
+    const spam = Number(canvas.dataset.spam);
+ 
+    new Chart(canvas, {
+        type: "pie",
+        data: {
+            labels: ["Safe", "Toxic", "Spam"],
+            datasets: [{
+                data: [safe, toxic, spam],
+                backgroundColor: ["#2f9e44", "#e03131", "#d9820c"]
+            }]
+        },
+        options: { responsive: true }
     });
 }
 </script>
-
+ 
 </body>
 </html>
+ 

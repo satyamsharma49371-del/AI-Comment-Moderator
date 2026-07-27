@@ -3,4 +3,4 @@ __pycache__/
 comments.db
 predictions.csv
 venv/
-.env
+.env  

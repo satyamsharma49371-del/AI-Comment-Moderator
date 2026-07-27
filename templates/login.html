@@ -1,52 +1,31 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Admin Login</title>
+    <meta charset="UTF-8">
+    <title>Login — AI Comment Moderator</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-
 <body>
-
+ 
 <div class="container">
-
     <h1>🔐 Admin Login</h1>
-
+    <p class="subtitle">Log in to check comments and view the moderation dashboard.</p>
+ 
     {% if error %}
-        <p style="color:red;">{{ error }}</p>
+        <p style="color: #e03131;">{{ error }}</p>
     {% endif %}
-
-    <form method="POST">
-
-        <input
-            type="text"
-            name="username"
-            placeholder="Username"
-            required
-        >
-
-        <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            required
-        >
-
-        <button type="submit">
-            Login
-        </button>
-
+ 
+    <form method="POST" class="input-row" style="flex-direction: column;">
+        <input type="text" name="username" placeholder="Username" required>
+        <input type="password" name="password" placeholder="Password" required>
+        <button type="submit">Login</button>
     </form>
-
+ 
+    <p style="margin-top: 20px;">
+        Don't have an account? <a href="/register">Create one</a>
+    </p>
 </div>
-
+ 
 </body>
 </html>
-<hr>
-
-<p>Don't have an account?</p>
-
-<a href="/register">
-    <button type="button" class="btn btn-success">
-        Create New Account
-    </button>
-</a>
+ 
