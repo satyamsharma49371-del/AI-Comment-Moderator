@@ -1,12 +1,13 @@
 import os
 import sys
 import csv
-import sqlite3
 import subprocess
 from datetime import datetime, timedelta
  
 import joblib
 import pandas as pd
+import psycopg2
+import psycopg2.extras
 from flask import Flask, render_template, request, redirect, session, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
  
@@ -16,14 +17,13 @@ app = Flask(__name__)
 # Reads from environment in production; falls back to a dev-only key locally.
 app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-me")
  
-DB_PATH = "comments.db"
+DATABASE_URL = os.environ["DATABASE_URL"]
  
  
 def get_db():
-    """Open a fresh connection per call instead of sharing one global
-    connection across requests (avoids thread-safety issues)."""
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
+    """Open a fresh PostgreSQL connection per call. Data lives on Render's
+    persistent database service now, so it survives restarts/redeploys."""
+    conn = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
     return conn
  
  
@@ -32,7 +32,7 @@ def init_db():
     cur = conn.cursor()
     cur.execute("""
         CREATE TABLE IF NOT EXISTS comments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             time TEXT,
             comment TEXT,
             result TEXT
@@ -40,7 +40,7 @@ def init_db():
     """)
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             username TEXT UNIQUE,
             password TEXT
         )
@@ -49,14 +49,15 @@ def init_db():
  
     # Create a default admin account, but with a HASHED password so it can
     # actually pass check_password_hash() at login time.
-    cur.execute("SELECT * FROM users WHERE username='admin'")
+    cur.execute("SELECT * FROM users WHERE username=%s", ("admin",))
     if cur.fetchone() is None:
         cur.execute(
-            "INSERT INTO users (username, password) VALUES (?, ?)",
+            "INSERT INTO users (username, password) VALUES (%s, %s)",
             ("admin", generate_password_hash("1234")),
         )
         conn.commit()
  
+    cur.close()
     conn.close()
  
  
@@ -137,11 +138,13 @@ def home():
             current_time = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
  
             conn = get_db()
-            conn.execute(
-                "INSERT INTO comments (time, comment, result) VALUES (?, ?, ?)",
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO comments (time, comment, result) VALUES (%s, %s, %s)",
                 (current_time, comment, result),
             )
             conn.commit()
+            cur.close()
             conn.close()
  
     filter_type = request.args.get("filter", "all")
@@ -178,8 +181,10 @@ def clear():
         return redirect("/login")
  
     conn = get_db()
-    conn.execute("DELETE FROM comments")
+    cur = conn.cursor()
+    cur.execute("DELETE FROM comments")
     conn.commit()
+    cur.close()
     conn.close()
     return redirect("/")
  
@@ -190,8 +195,10 @@ def delete(comment_id):
         return redirect("/login")
  
     conn = get_db()
-    conn.execute("DELETE FROM comments WHERE id = ?", (comment_id,))
+    cur = conn.cursor()
+    cur.execute("DELETE FROM comments WHERE id = %s", (comment_id,))
     conn.commit()
+    cur.close()
     conn.close()
     return redirect("/")
  
@@ -210,7 +217,7 @@ def login():
  
         conn = get_db()
         cur = conn.cursor()
-        cur.execute("SELECT * FROM users WHERE username=?", (username,))
+        cur.execute("SELECT * FROM users WHERE username=%s", (username,))
         user = cur.fetchone()
         conn.close()
  
@@ -240,14 +247,14 @@ def register():
  
         conn = get_db()
         cur = conn.cursor()
-        cur.execute("SELECT * FROM users WHERE username=?", (username,))
+        cur.execute("SELECT * FROM users WHERE username=%s", (username,))
  
         if cur.fetchone():
             conn.close()
             return render_template("register.html", error="Username already exists!")
  
         cur.execute(
-            "INSERT INTO users (username, password) VALUES (?, ?)",
+            "INSERT INTO users (username, password) VALUES (%s, %s)",
             (username, generate_password_hash(password)),
         )
         conn.commit()
@@ -328,6 +335,41 @@ def export():
             writer.writerow([row["time"], row["comment"], row["result"]])
  
     return send_file("history.csv", as_attachment=True)
+ 
+ 
+# ---------------------------------------------------------------------
+# Public API endpoint — lets other apps check a comment programmatically
+# without logging into the website. Protected by an API key so random
+# people can't spam your model for free.
+# ---------------------------------------------------------------------
+API_KEY = os.environ.get("API_KEY", "change-this-key-12345")
+ 
+ 
+@app.route("/api/check", methods=["POST"])
+def api_check():
+    provided_key = request.headers.get("X-API-Key")
+    if provided_key != API_KEY:
+        return {"error": "Invalid or missing API key"}, 401
+ 
+    data = request.get_json(silent=True)
+    if not data or "comment" not in data:
+        return {"error": "Request must be JSON with a 'comment' field"}, 400
+ 
+    comment = str(data["comment"]).strip()
+    if not comment:
+        return {"error": "Comment cannot be empty"}, 400
+ 
+    result = model.predict([comment])[0]
+    probabilities = model.predict_proba([comment])[0]
+    classes = model.classes_
+    confidence = max(probabilities) * 100
+ 
+    return {
+        "comment": comment,
+        "result": result,
+        "confidence": round(confidence, 2),
+        "probabilities": {cls: round(p * 100, 2) for cls, p in zip(classes, probabilities)}
+    }
  
  
 if __name__ == "__main__":
