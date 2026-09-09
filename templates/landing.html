@@ -1,0 +1,63 @@
+!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Comment Moderator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+ 
+<nav class="landing-nav">
+    <div class="landing-logo">🛡️ CommentGuard</div>
+    <div class="landing-nav-links">
+        <a href="/login">Login</a>
+        <a href="/register" class="btn-nav-cta">Get Started</a>
+    </div>
+</nav>
+ 
+<div class="landing-hero">
+    <div class="landing-hero-text">
+        <span class="eyebrow"><span class="dot"></span> AI moderation engine live</span>
+        <h1 class="landing-title">Your fully personalised<br>AI comment<br>moderation tool</h1>
+        <p class="landing-subtitle">
+            One simple tool to check every comment for toxicity and spam
+            before it goes live. Protect your community, your brand, and
+            your peace of mind — powered by your own trained AI model.
+        </p>
+        <div class="landing-cta-row">
+            <a href="/register"><button type="button">Get Started Free</button></a>
+            <a href="/login"><button type="button" class="btn-outline">Login</button></a>
+        </div>
+    </div>
+ 
+    <div class="landing-hero-visual">
+        <div class="chat-bubble chat-safe">
+            <b>✅ Safe</b><br>"Great explanation, thank you!"
+        </div>
+        <div class="chat-bubble chat-toxic">
+            <b>❌ Toxic</b><br>"You are useless, go away!"
+        </div>
+        <div class="chat-bubble chat-spam">
+            <b>⚠️ Spam</b><br>"Click here to win a free iPhone!"
+        </div>
+    </div>
+</div>
+ 
+<div class="landing-features">
+    <div class="feature-card">
+        <h3>⚡ Instant Detection</h3>
+        <p>Every comment is classified as Safe, Toxic, or Spam in real time, with a confidence score.</p>
+    </div>
+    <div class="feature-card">
+        <h3>📊 Live Dashboard</h3>
+        <p>Track totals, trends, and history with a clean visual dashboard and charts.</p>
+    </div>
+    <div class="feature-card">
+        <h3>🔒 Secure by Design</h3>
+        <p>Hashed passwords, login protection, and your own private account.</p>
+    </div>
+</div>
+ 
+</body>
+</html>
+ 

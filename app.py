@@ -264,10 +264,10 @@ def register():
     return render_template("register.html", error="")
  
  
-@app.route("/retrain")
-def retrain():
+@app.route("/", methods=["GET", "POST"])
+def home():
     if "logged_in" not in session:
-        return redirect("/login")
+        return render_template("landing.html")
  
     global model
     # sys.executable instead of "python" - works reliably on hosts like
