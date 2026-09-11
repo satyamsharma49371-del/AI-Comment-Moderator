@@ -191,8 +191,7 @@ li {
 .safe-result  { color: #1e7e34; background: var(--safe-bg);  border: 1px solid #c3e6cb; }
 .toxic-result { color: #a71d2a; background: var(--toxic-bg); border: 1px solid #f5c6cb; }
 .spam-result  { color: #856404; background: var(--spam-bg);  border: 1px solid #f6e1b3; }
- 
-/* Dashboard */
+
 .dashboard {
     display: flex;
     justify-content: space-between;
@@ -279,8 +278,6 @@ li {
     .container { padding: 24px 20px; margin: 20px auto; }
     .dashboard { flex-direction: column; }
     input { width: 100%; }}
-    cat << 'EOF'
-/* Landing page */
 .landing-nav {
     display: flex;
     justify-content: space-between;
