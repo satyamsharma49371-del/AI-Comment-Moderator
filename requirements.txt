@@ -6,4 +6,3 @@ numpy
 scipy
 Werkzeug
 gunicorn
-psycopg2-binary

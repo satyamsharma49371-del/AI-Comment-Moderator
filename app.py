@@ -1,13 +1,12 @@
 import os
 import sys
 import csv
+import sqlite3
 import subprocess
 from datetime import datetime, timedelta
  
 import joblib
 import pandas as pd
-import psycopg2
-import psycopg2.extras
 from flask import Flask, render_template, request, redirect, session, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
  
@@ -16,11 +15,12 @@ model = joblib.load("model.pkl")
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-me")
  
-DATABASE_URL = os.environ["DATABASE_URL"]
+DB_PATH = "comments.db"
  
  
 def get_db():
-    conn = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
     return conn
  
  
@@ -29,7 +29,7 @@ def init_db():
     cur = conn.cursor()
     cur.execute("""
         CREATE TABLE IF NOT EXISTS comments (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             time TEXT,
             comment TEXT,
             result TEXT
@@ -37,22 +37,21 @@ def init_db():
     """)
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE,
             password TEXT
         )
     """)
     conn.commit()
  
-    cur.execute("SELECT * FROM users WHERE username=%s", ("admin",))
+    cur.execute("SELECT * FROM users WHERE username='admin'")
     if cur.fetchone() is None:
         cur.execute(
-            "INSERT INTO users (username, password) VALUES (%s, %s)",
+            "INSERT INTO users (username, password) VALUES (?, ?)",
             ("admin", generate_password_hash("1234")),
         )
         conn.commit()
  
-    cur.close()
     conn.close()
  
  
@@ -128,13 +127,11 @@ def home():
             current_time = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
  
             conn = get_db()
-            cur = conn.cursor()
-            cur.execute(
-                "INSERT INTO comments (time, comment, result) VALUES (%s, %s, %s)",
+            conn.execute(
+                "INSERT INTO comments (time, comment, result) VALUES (?, ?, ?)",
                 (current_time, comment, result),
             )
             conn.commit()
-            cur.close()
             conn.close()
  
     filter_type = request.args.get("filter", "all")
@@ -171,10 +168,8 @@ def clear():
         return redirect("/login")
  
     conn = get_db()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM comments")
+    conn.execute("DELETE FROM comments")
     conn.commit()
-    cur.close()
     conn.close()
     return redirect("/")
  
@@ -185,10 +180,8 @@ def delete(comment_id):
         return redirect("/login")
  
     conn = get_db()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM comments WHERE id = %s", (comment_id,))
+    conn.execute("DELETE FROM comments WHERE id = ?", (comment_id,))
     conn.commit()
-    cur.close()
     conn.close()
     return redirect("/")
  
@@ -207,7 +200,7 @@ def login():
  
         conn = get_db()
         cur = conn.cursor()
-        cur.execute("SELECT * FROM users WHERE username=%s", (username,))
+        cur.execute("SELECT * FROM users WHERE username=?", (username,))
         user = cur.fetchone()
         conn.close()
  
@@ -237,14 +230,14 @@ def register():
  
         conn = get_db()
         cur = conn.cursor()
-        cur.execute("SELECT * FROM users WHERE username=%s", (username,))
+        cur.execute("SELECT * FROM users WHERE username=?", (username,))
  
         if cur.fetchone():
             conn.close()
             return render_template("register.html", error="Username already exists!")
  
         cur.execute(
-            "INSERT INTO users (username, password) VALUES (%s, %s)",
+            "INSERT INTO users (username, password) VALUES (?, ?)",
             (username, generate_password_hash(password)),
         )
         conn.commit()
@@ -357,4 +350,5 @@ def api_check():
  
 if __name__ == "__main__":
     app.run(debug=True)
+ 
  
