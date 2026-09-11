@@ -14,15 +14,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 model = joblib.load("model.pkl")
  
 app = Flask(__name__)
-# Reads from environment in production; falls back to a dev-only key locally.
 app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-me")
  
 DATABASE_URL = os.environ["DATABASE_URL"]
  
  
 def get_db():
-    """Open a fresh PostgreSQL connection per call. Data lives on Render's
-    persistent database service now, so it survives restarts/redeploys."""
     conn = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
     return conn
  
@@ -47,8 +44,6 @@ def init_db():
     """)
     conn.commit()
  
-    # Create a default admin account, but with a HASHED password so it can
-    # actually pass check_password_hash() at login time.
     cur.execute("SELECT * FROM users WHERE username=%s", ("admin",))
     if cur.fetchone() is None:
         cur.execute(
@@ -63,12 +58,9 @@ def init_db():
  
 init_db()
  
-# Basic brute-force protection: tracks failed login attempts per username.
-# Resets when the app restarts (fine for a small project; a real production
-# app would store this in the DB or a cache like Redis instead).
 MAX_ATTEMPTS = 5
 LOCKOUT_MINUTES = 5
-failed_attempts = {}  # { username: {"count": int, "locked_until": datetime or None} }
+failed_attempts = {}
  
  
 def is_locked_out(username):
@@ -91,8 +83,6 @@ def reset_attempts(username):
  
  
 def fetch_history(filter_type="all", search_query=""):
-    """Always reads straight from the DB, so it never drifts out of sync
-    (fixes the old global in-memory `history` list)."""
     conn = get_db()
     cur = conn.cursor()
     cur.execute("SELECT id, time, comment, result FROM comments ORDER BY id ASC")
@@ -117,7 +107,7 @@ def fetch_history(filter_type="all", search_query=""):
 @app.route("/", methods=["GET", "POST"])
 def home():
     if "logged_in" not in session:
-        return redirect("/login")
+        return render_template("landing.html")
  
     confidence = 0
     result = ""
@@ -151,7 +141,7 @@ def home():
     search_query = request.args.get("search", "")
     history = fetch_history(filter_type, search_query)
  
-    all_history = fetch_history()  # unfiltered, for accurate counts
+    all_history = fetch_history()
     safe_count = sum(1 for r in all_history if r["result"] == "safe")
     toxic_count = sum(1 for r in all_history if r["result"] == "toxic")
     spam_count = sum(1 for r in all_history if r["result"] == "spam")
@@ -212,7 +202,7 @@ def login():
         if is_locked_out(username):
             return render_template(
                 "login.html",
-                error=f"Too many failed attempts. Try again in a few minutes."
+                error="Too many failed attempts. Try again in a few minutes."
             )
  
         conn = get_db()
@@ -264,14 +254,12 @@ def register():
     return render_template("register.html", error="")
  
  
-@app.route("/", methods=["GET", "POST"])
-def home():
+@app.route("/retrain")
+def retrain():
     if "logged_in" not in session:
-        return render_template("landing.html")
+        return redirect("/login")
  
     global model
-    # sys.executable instead of "python" - works reliably on hosts like
-    # Render where the command may only be available as "python3".
     result = subprocess.run([sys.executable, "train_model.py"], capture_output=True, text=True)
  
     if result.returncode != 0:
@@ -337,11 +325,6 @@ def export():
     return send_file("history.csv", as_attachment=True)
  
  
-# ---------------------------------------------------------------------
-# Public API endpoint — lets other apps check a comment programmatically
-# without logging into the website. Protected by an API key so random
-# people can't spam your model for free.
-# ---------------------------------------------------------------------
 API_KEY = os.environ.get("API_KEY", "change-this-key-12345")
  
  
